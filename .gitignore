@@ -6,3 +6,9 @@
 *.webp binary
 *.woff binary
 *.woff2 binary
+
+# Файлы редактора
+.idea
+*.sublime*
+.vscode
+*.code-workspace
