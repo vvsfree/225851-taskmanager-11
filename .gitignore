@@ -1,14 +1,14 @@
-* text eol=lf
-
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.webp binary
-*.woff binary
-*.woff2 binary
+# Файлы и папки операционной системы
+.DS_Store
+Thumbs.db
 
 # Файлы редактора
 .idea
 *.sublime*
 .vscode
-*.code-workspace
+
+# Вспомогательные файлы
+*.log*
+node_modules/
+
+# Файлы сборки (допишите самостоятельно)
