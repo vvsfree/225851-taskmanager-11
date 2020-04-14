@@ -1,74 +1,96 @@
-// Меню
-import {createSiteMenuTemplate} from "./components/site-menu.js";
-// Фильтры
-import {createFilterTemplate} from "./components/filter.js";
-// Панель задач
-import {createBoardTemplate} from "./components/board.js";
-// Управляющие сортировкой элементы
-import {createSortingTemplate} from "./components/sorting.js";
-// Карточка задачи
-import {createTaskTemplate} from "./components/task.js";
-// Форма создания/редактирования задачи (используется одна форма)
-import {createTaskEditTemplate} from "./components/task-edit.js";
-// Кнопка «Load more».
-import {createLoadMoreButtonTemplate} from "./components/load-more-button.js";
+import BoardComponent from "./components/board.js";
+import FilterComponent from "./components/filter.js";
+import LoadMoreButtonComponent from "./components/load-more-button.js";
+import TaskEditComponent from "./components/task-edit.js";
+import TaskComponent from "./components/task.js";
+import TasksComponent from "./components/tasks.js";
+import NoTasksComponent from "./components/no-tasks.js";
+import SiteMenuComponent from "./components/site-menu.js";
+import SortComponent from "./components/sort.js";
 
 // Генерация объектов
 import {generateTasks} from "./mock/task.js";
 import {generateFilters} from "./mock/filter.js";
 
-const TASK_COUNT = 30;
+// Отрисовка элементов
+import {render, RenderPosition} from "./utils.js";
+
+const TASK_COUNT = 20;
 const SHOWING_TASKS_COUNT_ON_START = 8;
 const SHOWING_TASKS_COUNT_BY_BUTTON = 8;
 
-// Наименование (типа) пользовательского события проверки просрочки выполнения задачи
-const CHECK_EXPIRE_EVENT = `checkExpire`;
+const renderTask = (taskListElement, task) => {
+  const replaceTaskToEdit = () => {
+    taskListElement.replaceChild(taskEditComponent.getElement(), taskComponent.getElement());
+  };
 
-const render = (container, text, place) => {
-  container.insertAdjacentHTML(place, text);
+  const replaceEditToTask = () => {
+    taskListElement.replaceChild(taskComponent.getElement(), taskEditComponent.getElement());
+  };
+
+  const onEscKeyDown = (evt) => {
+    const isEscKey = evt.key === `Escape` || evt.key === `Esc`;
+
+    if (isEscKey) {
+      replaceEditToTask();
+      document.removeEventListener(`keydown`, onEscKeyDown);
+    }
+  };
+
+  const taskComponent = new TaskComponent(task);
+  const editButton = taskComponent.getElement().querySelector(`.card__btn--edit`);
+  editButton.addEventListener(`click`, () => {
+    replaceTaskToEdit();
+    document.addEventListener(`keydown`, onEscKeyDown);
+  });
+
+  const taskEditComponent = new TaskEditComponent(task);
+  const editForm = taskEditComponent.getElement().querySelector(`form`);
+  editForm.addEventListener(`submit`, (evt) => {
+    evt.preventDefault();
+    replaceEditToTask();
+    document.removeEventListener(`keydown`, onEscKeyDown);
+  });
+
+  render(taskListElement, taskComponent.getElement(), RenderPosition.BEFOREEND);
 };
 
-const renderTask = (container, task, isEdit = false, place = `beforeend`) => {
-  const text = isEdit ? createTaskEditTemplate(task) : createTaskTemplate(task);
-  render(container, text, place);
-  // Только что добавленной на страницу задаче навешивается обработчик пользовательского события "Проверка просрочки"
-  taskListElement.lastChild.addEventListener(CHECK_EXPIRE_EVENT, function (evt) {
-    if (task.isExpired && !evt.target.classList.contains(`card--deadline`)) {
-      evt.target.classList.add(`card--deadline`);
+const renderBoard = (boardComponent, tasks) => {
+  if (tasks.length === 0) {
+    render(boardComponent.getElement(), new NoTasksComponent().getElement(), RenderPosition.BEFOREEND);
+    return;
+  }
+
+  render(boardComponent.getElement(), new SortComponent().getElement(), RenderPosition.BEFOREEND);
+  render(boardComponent.getElement(), new TasksComponent().getElement(), RenderPosition.BEFOREEND);
+
+  const taskListElement = boardComponent.getElement().querySelector(`.board__tasks`);
+
+  let showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
+  tasks.slice(0, showingTasksCount)
+    .forEach((task) => {
+      renderTask(taskListElement, task);
+    });
+
+  const loadMoreButtonComponent = new LoadMoreButtonComponent();
+  render(boardComponent.getElement(), loadMoreButtonComponent.getElement(), RenderPosition.BEFOREEND);
+
+  loadMoreButtonComponent.getElement().addEventListener(`click`, () => {
+    const prevTasksCount = showingTasksCount;
+    showingTasksCount = showingTasksCount + SHOWING_TASKS_COUNT_BY_BUTTON;
+
+    tasks.slice(prevTasksCount, showingTasksCount)
+      .forEach((task) => renderTask(taskListElement, task));
+
+    if (showingTasksCount >= tasks.length) {
+      loadMoreButtonComponent.getElement().remove();
+      loadMoreButtonComponent.removeElement();
     }
   });
 };
 
-const loadMoreButtonClickHandler = (evt) => {
-  // Между моментом нажатия кнопки "Load more" и предыдущей отрисовкой задач может пройти какое-то время
-  // За это время часть уже отрисованных задач может оказаться просроченной
-  // Необходимо это проверить и, в случае просрочки, изменить отображение задачи
-  // Для этого на уже отрисованных элементах запускам событие "Проверка просрочки"
-  const timeEvent = new CustomEvent(CHECK_EXPIRE_EVENT);
-  Array.from(taskListElement.children).forEach((item) => {
-    item.dispatchEvent(timeEvent);
-  });
-
-  // Также необходимо обновить значения фильтров
-  filters = generateFilters(tasks);
-  const filterElement = siteMainElement.querySelector(`.filter`);
-  render(filterElement, createFilterTemplate(filters), `afterend`);
-  filterElement.remove();
-
-  // Далее дорисовываем новые задачи
-  const prevTasksCount = showingTasksCount;
-  showingTasksCount += SHOWING_TASKS_COUNT_BY_BUTTON;
-
-  filteredTasks.slice(prevTasksCount, showingTasksCount)
-    .forEach((task) => renderTask(taskListElement, task));
-
-  if (showingTasksCount >= filteredTasks.length) {
-    evt.target.remove();
-  }
-};
-
 const tasks = generateTasks(TASK_COUNT);
-// На данный момент нет фильтрации
+// На данный момент фильтрация не реализована
 // Предполагаем, что фильтр по умолчанию стоит в значении All: все невыполненные задачи
 const filteredTasks = tasks.filter((task) => !task.isArchive);
 
@@ -77,22 +99,9 @@ let filters = generateFilters(tasks);
 const siteMainElement = document.querySelector(`.main`);
 const siteHeaderElement = siteMainElement.querySelector(`.main__control`);
 
-render(siteHeaderElement, createSiteMenuTemplate(), `beforeend`);
-render(siteMainElement, createFilterTemplate(filters), `beforeend`);
-render(siteMainElement, createBoardTemplate(), `beforeend`);
+render(siteHeaderElement, new SiteMenuComponent().getElement(), RenderPosition.BEFOREEND);
+render(siteMainElement, new FilterComponent(filters).getElement(), RenderPosition.BEFOREEND);
 
-const boardElement = siteMainElement.querySelector(`.board`);
-render(boardElement, createSortingTemplate(), `afterbegin`);
-
-const taskListElement = siteMainElement.querySelector(`.board__tasks`);
-renderTask(taskListElement, filteredTasks[0], true);
-
-let showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
-filteredTasks.slice(1, showingTasksCount)
-  .forEach((task) => renderTask(taskListElement, task));
-
-if (showingTasksCount < filteredTasks.length) {
-  render(boardElement, createLoadMoreButtonTemplate(), `beforeend`);
-  const loadMoreButton = boardElement.querySelector(`.load-more`);
-  loadMoreButton.addEventListener(`click`, loadMoreButtonClickHandler);
-}
+const boardComponent = new BoardComponent();
+render(siteMainElement, boardComponent.getElement(), RenderPosition.BEFOREEND);
+renderBoard(boardComponent, filteredTasks);
