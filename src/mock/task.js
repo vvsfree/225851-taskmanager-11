@@ -5,8 +5,8 @@ const DescriptionItems = [
   `Сделать домашку`,
   `Поработать над личным проектом`,
   `Пройти интенсив на соточку`,
-  `Посидеть на карантине`,
-  `Гулять на балконе`,
+  `Прочитать главу из книжки по паттернам`,
+  `Отжаться 5 раз`,
 ];
 
 const DefaultRepeatingDays = {
@@ -19,8 +19,8 @@ const DefaultRepeatingDays = {
   "su": false,
 };
 
-const getRandomBoolean = () => {
-  return Math.random() > 0.5;
+const getRandomBoolean = (probability = 0.5) => {
+  return Math.random() < probability;
 };
 
 const getRandomArrayItem = (array) => {
@@ -63,11 +63,11 @@ const generateRepeatingDays = () => {
 const generateTask = () => {
   let dueDate = null;
   let repeatingDays = DefaultRepeatingDays;
-  const isRepeating = getRandomBoolean();
+  const isRepeating = getRandomBoolean(0.3);
   if (isRepeating) {
     repeatingDays = generateRepeatingDays();
   } else {
-    dueDate = getRandomBoolean() ? null : getRandomDate();
+    dueDate = getRandomBoolean(0.8) ? getRandomDate() : null;
   }
 
   return {
@@ -76,7 +76,7 @@ const generateTask = () => {
     repeatingDays,
     color: getRandomArrayItem(COLORS),
     isRepeating,
-    isArchive: getRandomBoolean(),
+    isArchive: getRandomBoolean(0.2),
     isFavorite: getRandomBoolean(),
     get isExpired() {
       return this.dueDate instanceof Date && this.dueDate < Date.now();
