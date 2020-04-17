@@ -5,7 +5,7 @@ import TasksComponent from "../components/tasks.js";
 import NoTasksComponent from "../components/no-tasks.js";
 import SortComponent from "../components/sort.js";
 
-import { render, replace, remove, RenderPosition } from "../utils/render.js";
+import {render, replace, remove, RenderPosition} from "../utils/render.js";
 
 const SHOWING_TASKS_COUNT_ON_START = 8;
 const SHOWING_TASKS_COUNT_BY_BUTTON = 8;
