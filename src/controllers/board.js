@@ -1,54 +1,22 @@
 import LoadMoreButtonComponent from "../components/load-more-button.js";
-import TaskEditComponent from "../components/task-edit.js";
-import TaskComponent from "../components/task.js";
 import TasksComponent from "../components/tasks.js";
 import NoTasksComponent from "../components/no-tasks.js";
 import SortComponent, {SortType} from "../components/sort.js";
 
-import {render, replace, remove, RenderPosition} from "../utils/render.js";
+import {render, remove, RenderPosition} from "../utils/render.js";
+
+import TaskController from "./task.js";
 
 const SHOWING_TASKS_COUNT_ON_START = 8;
 const SHOWING_TASKS_COUNT_BY_BUTTON = 8;
 
-const renderTask = (taskListElement, task) => {
-  const replaceTaskToEdit = () => {
-    replace(taskEditComponent, taskComponent);
-  };
+const renderTasks = (taskListElement, tasks, onDataChange, onViewChange) => {
+  return tasks.map((task) => {
+    const taskController = new TaskController(taskListElement, onDataChange, onViewChange);
 
-  const replaceEditToTask = () => {
-    replace(taskComponent, taskEditComponent);
-  };
+    taskController.render(task);
 
-  // Обработчик события нажатия клавиши Escape
-  const onEscKeyDown = (evt) => {
-    const isEscKey = evt.key === `Escape` || evt.key === `Esc`;
-
-    if (isEscKey) {
-      replaceEditToTask();
-      document.removeEventListener(`keydown`, onEscKeyDown);
-    }
-  };
-
-  const taskComponent = new TaskComponent(task);
-  const taskEditComponent = new TaskEditComponent(task);
-
-  taskComponent.setEditButtonClickHandler(() => {
-    replaceTaskToEdit();
-    document.addEventListener(`keydown`, onEscKeyDown);
-  });
-
-  taskEditComponent.setSubmitHandler((evt) => {
-    evt.preventDefault();
-    replaceEditToTask();
-    document.removeEventListener(`keydown`, onEscKeyDown);
-  });
-
-  render(taskListElement, taskComponent, RenderPosition.BEFOREEND);
-};
-
-const renderTasks = (taskListElement, tasks) => {
-  tasks.forEach((task) => {
-    renderTask(taskListElement, task);
+    return taskController;
   });
 };
 
@@ -75,65 +43,99 @@ export default class BoardController {
   constructor(container) {
     this._container = container;
 
+    this._tasks = [];
+    this._showedTaskControllers = [];
+
+    this._showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
     this._noTasksComponent = new NoTasksComponent();
     this._sortComponent = new SortComponent();
     this._tasksComponent = new TasksComponent();
     this._loadMoreButtonComponent = new LoadMoreButtonComponent();
+
+    this._onDataChange = this._onDataChange.bind(this);
+    this._onViewChange = this._onViewChange.bind(this);
+
+    this._onSortTypeChange = this._onSortTypeChange.bind(this);
+    this._sortComponent.setSortTypeChangeHandler(this._onSortTypeChange);
+
   }
 
   render(tasks) {
-    const renderLoadMoreButton = (source) => {
-      // Если отрисовывается кнопка, которая уже есть на странице, то она не продублируется, но добавится еще один обработчик
-      // Поэтому удаляем ее полностью (не только из DOM, но и сам элемент, к которому привязывается обработчик)
-      // Можно было бы запретить в компоненте кнопки добавлять больше одного обработчика, но это кажется неверным решением,
-      // т.к. кнопка может иметь более одного обработчика на один клик (событие).
-      // Также неудобно отдельно заниматься удалением существующих обработчиков
-      if (this._loadMoreButtonComponent.isElementExists()) {
-        remove(this._loadMoreButtonComponent);
-      }
+    this._tasks = tasks;
 
-      // Не показываем кнопку, если не хватает элементов для дополнительной подгрузки
-      if (showingTasksCount >= source.length) {
-        return;
-      }
-
-      render(this._container.getElement(), this._loadMoreButtonComponent, RenderPosition.BEFOREEND);
-      this._loadMoreButtonComponent.setClickHandler(() => {
-        const prevTasksCount = showingTasksCount;
-        showingTasksCount = showingTasksCount + SHOWING_TASKS_COUNT_BY_BUTTON;
-
-        renderTasks(taskListElement, source.slice(prevTasksCount, showingTasksCount));
-
-        if (showingTasksCount >= source.length) {
-          remove(this._loadMoreButtonComponent);
-        }
-      });
-    };
+    const containerElement = this._container.getElement();
 
     if (tasks.length === 0) {
-      render(this._container.getElement(), this._noTasksComponent, RenderPosition.BEFOREEND);
+      render(containerElement, this._noTasksComponent, RenderPosition.BEFOREEND);
       return;
     }
 
-    render(this._container.getElement(), this._sortComponent, RenderPosition.BEFOREEND);
-    render(this._container.getElement(), this._tasksComponent, RenderPosition.BEFOREEND);
+    render(containerElement, this._sortComponent, RenderPosition.BEFOREEND);
+    render(containerElement, this._tasksComponent, RenderPosition.BEFOREEND);
 
-    const taskListElement = this._container.getElement().querySelector(`.board__tasks`);
+    const taskListElement = this._tasksComponent.getElement();
+    const newTaskControllers = renderTasks(taskListElement, this._tasks.slice(0, this._showingTasksCount), this._onDataChange, this._onViewChange);
+    this._showedTaskControllers = this._showedTaskControllers.concat(newTaskControllers);
 
-    let showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
-    renderTasks(taskListElement, tasks.slice(0, showingTasksCount));
+    this._renderLoadMoreButton(tasks);
+  }
 
-    renderLoadMoreButton(tasks);
+  _renderLoadMoreButton(source) {
+    // Если отрисовывается кнопка, которая уже есть на странице, то она не продублируется, но добавится еще один обработчик
+    // Поэтому удаляем ее полностью (не только из DOM, но и сам элемент, к которому привязывается обработчик)
+    if (this._loadMoreButtonComponent.isElementExists()) {
+      remove(this._loadMoreButtonComponent);
+    }
 
-    this._sortComponent.setSortTypeChangeHandler((sortType) => {
-      const sortedTasks = getSortedTasks(tasks, sortType);
+    // Не показываем кнопку, если не хватает элементов для дополнительной подгрузки
+    if (this._showingTasksCount >= source.length) {
+      return;
+    }
 
-      taskListElement.innerHTML = ``;
+    const containerElement = this._container.getElement();
+    render(containerElement, this._loadMoreButtonComponent, RenderPosition.BEFOREEND);
 
-      showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
-      renderTasks(taskListElement, sortedTasks.slice(0, showingTasksCount));
+    this._loadMoreButtonComponent.setClickHandler(() => {
+      const prevTasksCount = this._showingTasksCount;
+      const taskListElement = this._tasksComponent.getElement();
+      this._showingTasksCount += SHOWING_TASKS_COUNT_BY_BUTTON;
 
-      renderLoadMoreButton(sortedTasks);
+      const newTaskControllers = renderTasks(taskListElement, source.slice(prevTasksCount, this._showingTasksCount), this._onDataChange, this._onViewChange);
+      this._showedTaskControllers = this._showedTaskControllers.concat(newTaskControllers);
+
+      if (this._showingTasksCount >= source.length) {
+        remove(this._loadMoreButtonComponent);
+      }
     });
+  }
+
+  _onDataChange(taskController, oldData, newData) {
+    const index = this._tasks.findIndex((it) => it === oldData);
+
+    if (index === -1) {
+      return;
+    }
+
+    this._tasks = [].concat(this._tasks.slice(0, index), newData, this._tasks.slice(index + 1));
+
+    taskController.render(this._tasks[index]);
+  }
+
+  _onViewChange() {
+    this._showedTaskControllers.forEach((it) => it.setDefaultView());
+  }
+
+  _onSortTypeChange(sortType) {
+    this._showingTasksCount = SHOWING_TASKS_COUNT_ON_START;
+
+    const sortedTasks = getSortedTasks(this._tasks, sortType);
+    const taskListElement = this._tasksComponent.getElement();
+
+    taskListElement.innerHTML = ``;
+
+    const newTaskControllers = renderTasks(taskListElement, sortedTasks.slice(0, this._showingTasksCount), this._onDataChange, this._onViewChange);
+    this._showedTaskControllers = newTaskControllers;
+
+    this._renderLoadMoreButton(sortedTasks);
   }
 }
