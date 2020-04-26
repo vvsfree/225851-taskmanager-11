@@ -1,16 +1,9 @@
-import {MONTH_NAMES} from "../const.js";
+import moment from "moment";
 
-const castTimeFormat = (value) => {
-  return value < 10 ? `0${value}` : String(value);
-};
-
-export const formatTime = (date) => {
-  const hours = castTimeFormat(date.getHours() % 24);
-  const minutes = castTimeFormat(date.getMinutes());
-
-  return `${hours}:${minutes}`;
+export const formatTime = (time) => {
+  return moment(time).format(`hh:mm`);
 };
 
 export const formatDate = (date) => {
-  return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
+  return moment(date).format(`DD MMMM`);
 };

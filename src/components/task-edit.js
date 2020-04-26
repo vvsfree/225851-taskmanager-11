@@ -1,6 +1,9 @@
 import AbstractSmartComponent from "./abstract-smart-component.js";
 import {COLORS, DAYS} from "../const.js";
 import {formatTime, formatDate} from "../utils/common.js";
+import flatpickr from "flatpickr";
+
+import "flatpickr/dist/flatpickr.min.css";
 
 const isSomeDayChosen = (repeatingDays) => {
   return Object.values(repeatingDays).some(Boolean);
@@ -57,9 +60,7 @@ const createTaskEditTemplate = (task, options = {}) => {
   // По условиям техзадания пользователь не может сохранить изменения, если он указал, что дата у задачи есть, но не выбрал её.
   // Аналогично с днями повторения. Поэтому нам нужно блокировать кнопку в таких случаях.
   const isBlockSaveButton = (isDateShowing && isRepeatingTask) ||
-    (isRepeatingTask && !isSomeDayChosen(activeRepeatingDays)) ||
-    // В дальнейшем, в случае, когда для DATE выставлено YES будет по умолчанию проставляться dueDate
-    (isDateShowing && !dueDate);
+    (isRepeatingTask && !isSomeDayChosen(activeRepeatingDays));
 
   const date = (isDateShowing && dueDate) ? formatDate(dueDate) : ``;
   const time = (isDateShowing && dueDate) ? formatTime(dueDate) : ``;
@@ -148,17 +149,22 @@ export default class TaskEdit extends AbstractSmartComponent {
     this._isRepeatingTask = task.isRepeating;
     this._activeRepeatingDays = Object.assign({}, task.repeatingDays);
 
+    this._flatpickr = null;
+    this._isCalendarOpen = false;
+
     this._submitHandler = null;
 
     this._subscribeOnEvents();
   }
 
   getTemplate() {
-    return createTaskEditTemplate(this._task, {
+    const template = createTaskEditTemplate(this._task, {
       isDateShowing: this._isDateShowing,
       isRepeatingTask: this._isRepeatingTask,
       activeRepeatingDays: this._activeRepeatingDays,
     });
+
+    return template;
   }
 
   recoveryListeners() {
@@ -168,6 +174,7 @@ export default class TaskEdit extends AbstractSmartComponent {
 
   rerender() {
     super.rerender();
+    this.applyCalendar();
   }
 
   reset() {
@@ -177,7 +184,7 @@ export default class TaskEdit extends AbstractSmartComponent {
     this._isRepeatingTask = task.isRepeating;
     this._activeRepeatingDays = Object.assign({}, task.repeatingDays);
 
-    this.rerender();
+    this._clearCalendar();
   }
 
   setSubmitHandler(handler) {
@@ -185,6 +192,56 @@ export default class TaskEdit extends AbstractSmartComponent {
       .addEventListener(`submit`, handler);
 
     this._submitHandler = handler;
+  }
+
+  // Нажали клавишу Esc. Если окно календаря открыто, его нужно закрыть, не закрывая окно редактирования задачи
+  checkCalendar(evt) {
+    const closestElement = evt.target.closest(`.flatpickr-calendar`);
+    // 1) Фокус был на календаре. В этом случае календарь сам исчезнет, но окно редактирования задачи должно остаться
+    if (closestElement !== null) {
+      return false;
+    }
+    // 2) Фокус был не на календаре, а в поле даты (на которую навешан календарь).
+    // В этом случае, если окно календаря открыто, то закрыть нужно только его.
+    // Примечание: если выставить фокус куда-нибудь вне поля даты или календаря (кликнуть мышью) - календарь автоматически закроется.
+    if (this._flatpickr && this._isCalendarOpen) {
+      this._flatpickr.close();
+      return false;
+    }
+    // Окно календаря закрыто и не "препятствует" закрытию окна редактирования задачи
+    return true;
+  }
+
+  _clearCalendar() {
+    if (this._flatpickr) {
+      // При своем создании `flatpickr` дополнительно создает вспомогательные DOM-элементы.
+      // Что бы их удалять, нужно вызывать метод `destroy` у созданного инстанса `flatpickr`.
+      this._flatpickr.destroy();
+      this._flatpickr = null;
+      this._isCalendarOpen = false;
+    }
+  }
+
+  applyCalendar() {
+    this._clearCalendar();
+
+    if (this._isDateShowing) {
+      const dateElement = this.getElement().querySelector(`.card__date`);
+      this._flatpickr = flatpickr(dateElement, {
+        enableTime: true,
+        defaultDate: this._task.dueDate || `today`,
+        dateFormat: `Y-m-d H:i`,
+        altInput: true,
+        allowInput: true,
+        altFormat: `j F H:i`,
+        onOpen: [() => {
+          this._isCalendarOpen = true;
+        }],
+        onClose: () => {
+          this._isCalendarOpen = false;
+        }
+      });
+    }
   }
 
   _subscribeOnEvents() {
