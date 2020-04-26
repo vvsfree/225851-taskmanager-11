@@ -77,6 +77,7 @@ export default class TaskController {
     this._onViewChange();
     replace(this._taskEditComponent, this._taskComponent);
     this._mode = Mode.EDIT;
+    this._taskEditComponent.applyCalendar();
   }
 
   // Обработчик события нажатия клавиши Escape
@@ -84,8 +85,10 @@ export default class TaskController {
     const isEscKey = evt.key === `Escape` || evt.key === `Esc`;
 
     if (isEscKey) {
-      this._replaceEditToTask();
-      document.removeEventListener(`keydown`, this._onEscKeyDown);
+      if (this._taskEditComponent.checkCalendar(evt)) {
+        this._replaceEditToTask();
+        document.removeEventListener(`keydown`, this._onEscKeyDown);
+      }
     }
   }
 }
