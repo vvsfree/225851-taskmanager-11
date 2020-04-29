@@ -1,5 +1,7 @@
 import AbstractComponent from "./abstract-component.js";
 import {formatTime, formatDate} from "../utils/common.js";
+import {isRepeating, isOverdueDate} from "../utils/common.js";
+import {encode} from "he";
 
 const createButtonMarkup = (name, isActive = true) => {
   return (
@@ -13,18 +15,20 @@ const createButtonMarkup = (name, isActive = true) => {
 };
 
 const createTaskTemplate = (task) => {
-  const {description, dueDate, color, isArchive, isFavorite, isExpired, isRepeating} = task;
+  const {description: notSanitizedDescription, dueDate, color, repeatingDays, isArchive, isFavorite} = task;
 
+  const isExpired = dueDate instanceof Date && isOverdueDate(dueDate, new Date());
   const isDateShowing = !!dueDate;
 
   const date = isDateShowing ? formatDate(dueDate) : ``;
   const time = isDateShowing ? formatTime(dueDate) : ``;
+  const description = encode(notSanitizedDescription);
 
   const editButton = createButtonMarkup(`edit`);
   const archiveButton = createButtonMarkup(`archive`, isArchive);
   const favoritesButton = createButtonMarkup(`favorites`, isFavorite);
 
-  const repeatClass = isRepeating ? `card--repeat` : ``;
+  const repeatClass = isRepeating(repeatingDays) ? `card--repeat` : ``;
   const deadlineClass = isExpired ? `card--deadline` : ``;
 
   return `<article class="card card--${color} ${repeatClass} ${deadlineClass}">

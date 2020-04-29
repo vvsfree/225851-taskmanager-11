@@ -71,16 +71,13 @@ const generateTask = () => {
   }
 
   return {
+    id: String(new Date() + Math.random()),
     description: getRandomArrayItem(DescriptionItems),
     dueDate,
     repeatingDays,
     color: getRandomArrayItem(COLORS),
-    isRepeating,
     isArchive: getRandomBoolean(0.2),
-    isFavorite: getRandomBoolean(),
-    get isExpired() {
-      return this.dueDate instanceof Date && this.dueDate < Date.now();
-    }
+    isFavorite: getRandomBoolean()
   };
 };
 

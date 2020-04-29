@@ -27,6 +27,10 @@ export default class Sort extends AbstractComponent {
     return createSortTemplate();
   }
 
+  setSortType(sortType) {
+    this._currenSortType = sortType;
+  }
+
   getSortType() {
     return this._currenSortType;
   }
