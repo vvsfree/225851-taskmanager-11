@@ -33,7 +33,6 @@ const boardController = new BoardController(boardComponent, tasksModel);
 boardController.render();
 
 siteMenuComponent.setOnChange((menuItem) => {
-  debugger;
   switch (menuItem) {
     case MenuItem.NEW_TASK:
       siteMenuComponent.setActiveItem(MenuItem.TASKS);
