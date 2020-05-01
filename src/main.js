@@ -2,6 +2,7 @@ import BoardComponent from "./components/board.js";
 import BoardController from "./controllers/board.js";
 import FilterController from "./controllers/filter.js";
 import SiteMenuComponent, {MenuItem} from "./components/site-menu.js";
+import StatisticsComponent from "./components/statistics.js";
 
 // Модель
 import TasksModel from "./models/tasks.js";
@@ -12,7 +13,7 @@ import {generateTasks} from "./mock/task.js";
 // Отрисовка элементов
 import {render, RenderPosition} from "./utils/render.js";
 
-const TASK_COUNT = 0;
+const TASK_COUNT = 22;
 
 const tasks = generateTasks(TASK_COUNT);
 const tasksModel = new TasksModel();
@@ -26,6 +27,16 @@ render(siteHeaderElement, siteMenuComponent, RenderPosition.BEFOREEND);
 const filterController = new FilterController(siteMainElement, tasksModel);
 filterController.render();
 
+const dateTo = new Date();
+const dateFrom = (() => {
+  const d = new Date(dateTo);
+  d.setDate(d.getDate() - 7);
+  return d;
+})();
+const statisticsComponent = new StatisticsComponent({tasks: tasksModel, dateFrom, dateTo});
+render(siteMainElement, statisticsComponent, RenderPosition.BEFOREEND);
+statisticsComponent.hide();
+
 const boardComponent = new BoardComponent();
 render(siteMainElement, boardComponent, RenderPosition.BEFOREEND);
 
@@ -36,8 +47,19 @@ siteMenuComponent.setOnChange((menuItem) => {
   switch (menuItem) {
     case MenuItem.NEW_TASK:
       siteMenuComponent.setActiveItem(MenuItem.TASKS);
-      filterController.resetFilter();
+
+      statisticsComponent.hide();
+      boardController.show();
+
       boardController.createTask();
+      break;
+    case MenuItem.STATISTICS:
+      boardController.hide();
+      statisticsComponent.show();
+      break;
+    case MenuItem.TASKS:
+      statisticsComponent.hide();
+      boardController.show();
       break;
   }
 });
