@@ -1,23 +1,22 @@
+import API from "./api.js";
 import BoardComponent from "./components/board.js";
 import BoardController from "./controllers/board.js";
 import FilterController from "./controllers/filter.js";
-import SiteMenuComponent, {MenuItem} from "./components/site-menu.js";
 import StatisticsComponent from "./components/statistics.js";
+import SiteMenuComponent, {MenuItem} from "./components/site-menu.js";
 
 // Модель
 import TasksModel from "./models/tasks.js";
 
-// Генерация объектов
-import {generateTasks} from "./mock/task.js";
-
 // Отрисовка элементов
 import {render, RenderPosition} from "./utils/render.js";
 
-const TASK_COUNT = 22;
+const AUTHORIZATION = `Basic 01XNlckBwYXNzd29yZAo=`;
+const END_POINT = `https://11.ecmascript.pages.academy/task-manager`;
 
-const tasks = generateTasks(TASK_COUNT);
+
+const api = new API(END_POINT, AUTHORIZATION);
 const tasksModel = new TasksModel();
-tasksModel.setTasks(tasks);
 
 const siteMainElement = document.querySelector(`.main`);
 const siteHeaderElement = siteMainElement.querySelector(`.main__control`);
@@ -40,7 +39,7 @@ statisticsComponent.hide();
 const boardComponent = new BoardComponent();
 render(siteMainElement, boardComponent, RenderPosition.BEFOREEND);
 
-const boardController = new BoardController(boardComponent, tasksModel);
+const boardController = new BoardController(boardComponent, tasksModel, api);
 boardController.render();
 
 siteMenuComponent.setOnChange((menuItem) => {
@@ -63,3 +62,10 @@ siteMenuComponent.setOnChange((menuItem) => {
       break;
   }
 });
+
+api.getTasks()
+  .then((tasks) => {
+    tasksModel.setTasks(tasks);
+    boardController.render();
+  });
+
