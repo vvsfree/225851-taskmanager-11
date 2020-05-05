@@ -57,11 +57,6 @@ export default class Tasks {
   }
 
   addTask(task) {
-    // ID нужен, без него не будет нормально работать удаление, редактирование, поиск
-    // Пока неизвестно, кто должен присваивать ID, клиент или сервер.
-    // Может быть сервер будет менять клиентские ID
-    // Это решение временное, до работы с сетью.
-    task.id = String(new Date() + Math.random());
     this._tasks = [].concat(task, this._tasks);
     this._callHandlers(this._dataChangeHandlers);
   }
