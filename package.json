@@ -17,7 +17,7 @@
     "style-loader": "^1.1.4",
     "webpack": "4.42.1",
     "webpack-cli": "3.3.11",
-    "webpack-dev-server": "3.10.3"
+    "webpack-dev-server": "^3.11.0"
   },
   "engines": {
     "node": "10"
@@ -27,6 +27,7 @@
     "chartjs-plugin-datalabels": "^0.7.0",
     "flatpickr": "^4.6.3",
     "he": "^1.2.0",
-    "moment": "^2.24.0"
+    "moment": "^2.24.0",
+    "nanoid": "^3.1.6"
   }
 }
